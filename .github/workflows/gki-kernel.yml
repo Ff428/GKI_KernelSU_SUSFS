@@ -179,7 +179,7 @@ jobs:
           if [[ "${{ inputs.kernelsu_branch }}" == "Stable" ]]; then
               echo "BRANCH=-" >> $GITHUB_ENV
           elif [[ "${{ inputs.kernelsu_branch }}" == "Dev" && ( "${{ inputs.kernelsu_variant }}" == "Official" || "${{ inputs.kernelsu_variant }}" == "MKSU" ) ]]; then
-              echo "BRANCH=-s main" >> $GITHUB_ENV
+              echo "BRANCH=-s susfs" >> $GITHUB_ENV
           elif [[ "${{ inputs.kernelsu_branch }}" == "Dev" && "${{ inputs.kernelsu_variant }}" == "Next" ]]; then
               echo "BRANCH=-s next" >> $GITHUB_ENV
           elif [[ "${{ inputs.kernelsu_branch }}" == "Other" && -n "${{ inputs.kernelsu_branch_other }}" ]]; then
@@ -203,7 +203,7 @@ jobs:
             #curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next-susfs/kernel/setup.sh" | bash -s next-susfs
           elif [ "${{ inputs.kernelsu_variant }}" == "MKSU" ]; then
             echo "Adding KernelSU MKSU..."
-            curl -LSs "https://raw.githubusercontent.com/5ec1cff/KernelSU/main/kernel/setup.sh" | bash $BRANCH
+            curl -LSs "https://raw.githubusercontent.com/ShirkNeko/KernelSU/susfs/kernel/setup.sh" | bash $BRANCH
           fi
           
       - name: Apply SUSFS Patches for KernelSU Variants
@@ -234,12 +234,6 @@ jobs:
             cd ./KernelSU
             patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
             
-            echo "Applying MKSU specific SUSFS patch..."
-            cp ../../kernel_patches/mksu_susfs.patch ../KernelSU/
-            patch -p1 < mksu_susfs.patch
-            cp ../../kernel_patches/fix.patch ./KernelSU/
-            patch -p1 < fix.patch
-            
           else
             echo "Invalid KernelSU variant selected!"
             exit 1
@@ -248,6 +242,10 @@ jobs:
           # Change to common directory and apply common SUSFS patch
           cd ../common
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+
+          echo "Applying MKSU specific SUSFS patch..."
+          cd ../KernelSU
+          patch -p1 < mksu_susfs_fix.patch || true
 
       - name: Apply New Hooks Patches
         run: |
@@ -283,7 +281,7 @@ jobs:
           echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -311,7 +309,7 @@ jobs:
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
 
-          sed -i '$s|echo "\$res"|echo "\$res-Wild+"|' ./common/scripts/setlocalversion
+          sed -i '$s|echo "\$res"|echo "\$res-shirkneko"|' ./common/scripts/setlocalversion
 
           # Run perl command to modify UTS_VERSION
           perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT Sat Apr 20 04:20:00 UTC 2024"}' ./common/scripts/mkcompile_h
@@ -323,7 +321,7 @@ jobs:
           else
             rm -rf ./common/android/abi_gki_protected_exports_*
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
-            sed -E -i '/^CONFIG_LOCALVERSION=/ s/(.*)"$/\1-Wild+"/' ./common/arch/arm64/configs/gki_defconfig
+            sed -E -i '/^CONFIG_LOCALVERSION=/ s/(.*)"$/\1-shirkneko"/' ./common/arch/arm64/configs/gki_defconfig
             #tools/bazel build --config=fast --lto=${{ inputs.lto_type }} //common:kernel_aarch64_dist
           fi
 
