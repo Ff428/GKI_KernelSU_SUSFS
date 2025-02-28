@@ -246,6 +246,8 @@ jobs:
           echo "Applying MKSU specific SUSFS patch..."
           cd ../KernelSU
           patch -p1 < mksu_susfs_fix.patch || true
+          chmod 777 mksu_susfs_vfs_fix.sh
+          ./mksu_susfs_vfs_fix.sh
 
       - name: Apply New Hooks Patches
         run: |
